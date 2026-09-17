@@ -540,16 +540,14 @@ while True:
         time.sleep(15)
 
 
-    except (
-        KeyError,
-        IndexError,
-        ValueError
-    ) as erro:
+    except Exception as erro:
 
         print(
-            "Erro ao interpretar os dados:",
+            "Erro inesperado no monitor:",
+            type(erro).__name__,
+            "-",
             erro
-        )
+    )
 
         time.sleep(15)
 
