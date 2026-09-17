@@ -2,17 +2,17 @@ from flask import Flask
 import subprocess
 import sys
 import os
-from datetime import datetime, timezone
-
+import requests
+import urllib3
 
 app = Flask(__name__)
 
+ARQUIVO_STATUS = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "monitor_status.txt"
+)
 
-ARQUIVO_STATUS = "monitor_status.txt"
-
-
-inicio_monitor = datetime.now(timezone.utc)
-
+inicio_monitor = None
 
 monitor = subprocess.Popen([
     sys.executable,
@@ -22,7 +22,6 @@ monitor = subprocess.Popen([
 
 @app.route("/")
 def inicio():
-
     return "Monitor EMTU funcionando!"
 
 
@@ -41,39 +40,21 @@ def status():
                     encoding="utf-8"
                 ) as arquivo:
 
-                    ultima_consulta = datetime.fromisoformat(
-                        arquivo.read().strip()
-                    )
-
-
-                agora = datetime.now(timezone.utc)
-
-
-                tempo_desde_consulta = (
-                    agora - ultima_consulta
-                )
-
+                    ultima_consulta = arquivo.read().strip()
 
                 return (
                     "Monitor EMTU está rodando!<br>"
                     f"PID: {monitor.pid}<br>"
-                    f"Iniciado em: "
-                    f"{inicio_monitor.strftime('%d/%m/%Y %H:%M:%S')} UTC<br>"
-                    f"Última consulta à EMTU: "
-                    f"{ultima_consulta.strftime('%d/%m/%Y %H:%M:%S')} UTC<br>"
-                    f"Tempo desde a última consulta: "
-                    f"{tempo_desde_consulta}"
+                    f"Última consulta à EMTU: {ultima_consulta}"
                 )
-
 
             except Exception as erro:
 
                 return (
                     "Monitor EMTU está rodando!<br>"
                     f"PID: {monitor.pid}<br>"
-                    f"Não foi possível ler o status: {erro}"
+                    f"Erro ao ler status: {erro}"
                 )
-
 
         return (
             "Monitor EMTU está rodando!<br>"
@@ -81,11 +62,43 @@ def status():
             "Ainda não foi registrada uma consulta à EMTU."
         )
 
-
     return (
         "Monitor EMTU parou.<br>"
         f"Código de saída: {monitor.returncode}"
     )
+
+
+@app.route("/emtu-test")
+def emtu_test():
+
+    urllib3.disable_warnings(
+        urllib3.exceptions.InsecureRequestWarning
+    )
+
+    try:
+
+        resposta = requests.get(
+            "https://rest-emtu.noxxonsat.com.br/rest/lineDetails",
+            params={
+                "linha": "047"
+            },
+            verify=False,
+            timeout=15
+        )
+
+        return (
+            f"Conexão com EMTU funcionando!<br>"
+            f"Status HTTP: {resposta.status_code}<br>"
+            f"Tamanho da resposta: {len(resposta.content)} bytes"
+        )
+
+    except Exception as erro:
+
+        return (
+            "ERRO AO ACESSAR A API DA EMTU!<br>"
+            f"Tipo: {type(erro).__name__}<br>"
+            f"Erro: {erro}"
+        )
 
 
 if __name__ == "__main__":
@@ -93,7 +106,6 @@ if __name__ == "__main__":
     porta = int(
         os.environ.get("PORT", 3000)
     )
-
 
     app.run(
         host="0.0.0.0",
