@@ -2,9 +2,11 @@ import csv
 import time
 import requests
 import urllib3
-from geopy.distance import geodesic
-from datetime import datetime, timezone
 import math
+import os
+
+from datetime import datetime, timezone
+from geopy.distance import geodesic
 
 
 # ==========================================================
@@ -28,13 +30,44 @@ TOPICO = "gui-emtu-047-9x82k"
 # API da EMTU
 URL_API = "https://rest-emtu.noxxonsat.com.br/rest/lineDetails"
 
-# Arquivo usado para informar quando foi feita a última consulta
-ARQUIVO_STATUS = "monitor_status.txt"
+# Pasta onde este arquivo está
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+# Arquivo com os pontos
+ARQUIVO_STOP = os.path.join(
+    BASE_DIR,
+    "stop.txt"
+)
+
+# Arquivo usado para informar a última consulta
+ARQUIVO_STATUS = os.path.join(
+    BASE_DIR,
+    "monitor_status.txt"
+)
 
 # Remove aviso do certificado expirado
 urllib3.disable_warnings(
     urllib3.exceptions.InsecureRequestWarning
 )
+
+
+# ==========================================================
+# FUNÇÃO - ATUALIZAR STATUS
+# ==========================================================
+
+def atualizar_status():
+
+    with open(
+        ARQUIVO_STATUS,
+        "w",
+        encoding="utf-8"
+    ) as arquivo_status:
+
+        arquivo_status.write(
+            datetime.now(timezone.utc).isoformat()
+        )
 
 
 # ==========================================================
@@ -59,20 +92,25 @@ def enviar_notificacao(prefixo):
 
         if resposta.status_code == 200:
 
-            print("📱 Notificação enviada para o iPhone!")
+            print(
+                "📱 Notificação enviada para o iPhone!",
+                flush=True
+            )
 
         else:
 
             print(
                 "Erro ao enviar notificação:",
-                resposta.status_code
+                resposta.status_code,
+                flush=True
             )
 
     except requests.RequestException as erro:
 
         print(
             "Erro ao enviar notificação:",
-            erro
+            erro,
+            flush=True
         )
 
 
@@ -92,8 +130,12 @@ def buscar_stop(arquivo, stop_id):
 
             return {
                 "nome": parada["stop_name"],
-                "latitude": float(parada["stop_lat"]),
-                "longitude": float(parada["stop_lon"])
+                "latitude": float(
+                    parada["stop_lat"]
+                ),
+                "longitude": float(
+                    parada["stop_lon"]
+                )
             }
 
     return None
@@ -104,7 +146,7 @@ def buscar_stop(arquivo, stop_id):
 # ==========================================================
 
 with open(
-    "stop.txt",
+    ARQUIVO_STOP,
     "r",
     encoding="utf-8"
 ) as arquivo:
@@ -123,7 +165,8 @@ with open(
 if parada_alerta is None:
 
     print(
-        f"O ponto {ID_ALERTA} não foi encontrado."
+        f"O ponto {ID_ALERTA} não foi encontrado.",
+        flush=True
     )
 
     exit()
@@ -132,7 +175,8 @@ if parada_alerta is None:
 if parada_embarque is None:
 
     print(
-        f"O ponto {ID_EMBARQUE} não foi encontrado."
+        f"O ponto {ID_EMBARQUE} não foi encontrado.",
+        flush=True
     )
 
     exit()
@@ -153,9 +197,6 @@ nome_embarque = parada_embarque["nome"]
 # ==========================================================
 
 def calcular_posicao_relativa(latitude, longitude):
-
-    # Transformamos latitude/longitude em uma coordenada
-    # aproximada em metros.
 
     fator_latitude = 111320
 
@@ -210,21 +251,30 @@ def calcular_posicao_relativa(latitude, longitude):
 # 3. MOSTRAR CONFIGURAÇÃO
 # ==========================================================
 
-print("=" * 60)
-print("        MONITORAMENTO DA LINHA 047")
-print("        DESTINO: VILA PALMARES")
-print("=" * 60)
+print("=" * 60, flush=True)
+print(
+    "        MONITORAMENTO DA LINHA 047",
+    flush=True
+)
+print(
+    "        DESTINO: VILA PALMARES",
+    flush=True
+)
+print("=" * 60, flush=True)
 
-print("\n📍 ALERTA")
-print("ID:", ID_ALERTA)
-print("Nome:", nome_alerta)
+print("\n📍 ALERTA", flush=True)
+print("ID:", ID_ALERTA, flush=True)
+print("Nome:", nome_alerta, flush=True)
 
-print("\n🚌 EMBARQUE")
-print("ID:", ID_EMBARQUE)
-print("Nome:", nome_embarque)
+print("\n🚌 EMBARQUE", flush=True)
+print("ID:", ID_EMBARQUE, flush=True)
+print("Nome:", nome_embarque, flush=True)
 
-print("\nSentido monitorado: VOLTA")
-print("\nPressione Ctrl + C para parar.")
+print("\nSentido monitorado: VOLTA", flush=True)
+print(
+    "\nPressione Ctrl + C para parar.",
+    flush=True
+)
 
 
 # ==========================================================
@@ -259,16 +309,8 @@ while True:
 
         dados_api = resposta.json()
 
-        # Registra que uma consulta válida à EMTU foi realizada
-        with open(
-            ARQUIVO_STATUS,
-            "w",
-            encoding="utf-8"
-        ) as arquivo_status:
-
-            arquivo_status.write(
-                datetime.now(timezone.utc).isoformat()
-            )
+        # Registra que uma consulta válida foi realizada
+        atualizar_status()
 
         linha = dados_api["linhas"][0]
 
@@ -279,16 +321,33 @@ while True:
         # LIMPAR TELA
         # ==================================================
 
-        print("\033[2J\033[H", end="")
+        print(
+            "\033[2J\033[H",
+            end="",
+            flush=True
+        )
 
 
-        print("=" * 60)
-        print("        MONITORAMENTO DA LINHA 047")
-        print("        DESTINO: VILA PALMARES")
-        print("=" * 60)
+        print("=" * 60, flush=True)
+        print(
+            "        MONITORAMENTO DA LINHA 047",
+            flush=True
+        )
+        print(
+            "        DESTINO: VILA PALMARES",
+            flush=True
+        )
+        print("=" * 60, flush=True)
 
-        print(f"\n📍 Alerta: {ID_ALERTA}")
-        print(f"🚌 Embarque: {ID_EMBARQUE}\n")
+        print(
+            f"\n📍 Alerta: {ID_ALERTA}",
+            flush=True
+        )
+
+        print(
+            f"🚌 Embarque: {ID_EMBARQUE}\n",
+            flush=True
+        )
 
 
         encontrou_onibus = False
@@ -321,7 +380,7 @@ while True:
 
 
             # =================================================
-            # POSIÇÃO DO ÔNIBUS EM RELAÇÃO AO TRECHO
+            # POSIÇÃO DO ÔNIBUS
             # =================================================
 
             posicao_atual = calcular_posicao_relativa(
@@ -363,11 +422,7 @@ while True:
 
                 posicao_anterior[prefixo] = posicao_atual
 
-                # ------------------------------------------------
-                # SE ELE JÁ ESTÁ DEPOIS DO 91795:
-                # IGNORA
-                # ------------------------------------------------
-
+                # Se já está depois do ponto, ignora
                 if posicao_atual > 0:
 
                     continue
@@ -397,26 +452,26 @@ while True:
 
                 print(
                     f"\n🚨 ÔNIBUS {prefixo} "
-                    f"CHEGOU AO PONTO {ID_ALERTA}!"
+                    f"CHEGOU AO PONTO {ID_ALERTA}!",
+                    flush=True
                 )
 
                 print(
-                    f"📍 {nome_alerta}"
+                    f"📍 {nome_alerta}",
+                    flush=True
                 )
 
                 print(
-                    "🏃 Saia agora para pegar o ônibus!"
+                    "🏃 Saia agora para pegar o ônibus!",
+                    flush=True
                 )
-
 
                 enviar_notificacao(
                     prefixo
                 )
 
-
                 # Marca que já avisamos
                 notificados.add(prefixo)
-
 
                 # Atualiza posição
                 posicao_anterior[prefixo] = posicao_atual
@@ -430,8 +485,6 @@ while True:
 
             if posicao_atual >= 0:
 
-                # Se já está depois do ponto,
-                # não mostramos.
                 posicao_anterior[prefixo] = posicao_atual
 
                 continue
@@ -449,12 +502,6 @@ while True:
                 status = "ESTÁ PRÓXIMO"
 
                 simbolo = "🟡"
-
-            elif posicao_atual > posicao_antiga:
-
-                status = "ESTÁ INDO"
-
-                simbolo = "🟢"
 
             else:
 
@@ -485,19 +532,22 @@ while True:
             # =================================================
 
             print(
-                f"{simbolo} Ônibus {prefixo}"
+                f"{simbolo} Ônibus {prefixo}",
+                flush=True
             )
 
             print(
-                f"   Status: {status}"
+                f"   Status: {status}",
+                flush=True
             )
 
             print(
                 f"   Distância até {ID_ALERTA}: "
-                f"{distancia_formatada}"
+                f"{distancia_formatada}",
+                flush=True
             )
 
-            print()
+            print(flush=True)
 
 
             # Atualiza posição
@@ -512,14 +562,19 @@ while True:
 
             print(
                 "Nenhum ônibus ainda a caminho "
-                "do ponto de alerta."
+                "do ponto de alerta.",
+                flush=True
             )
 
 
-        print("-" * 60)
+        print(
+            "-" * 60,
+            flush=True
+        )
 
         print(
-            "Atualizando a cada 15 segundos..."
+            "Atualizando a cada 15 segundos...",
+            flush=True
         )
 
 
@@ -527,18 +582,43 @@ while True:
 
 
     # ======================================================
-    # ERROS
+    # ERROS DE REDE
     # ======================================================
 
     except requests.RequestException as erro:
 
         print(
             "Erro ao consultar a API:",
-            erro
+            erro,
+            flush=True
         )
 
         time.sleep(15)
 
+
+    # ======================================================
+    # ERROS NOS DADOS
+    # ======================================================
+
+    except (
+        KeyError,
+        IndexError,
+        ValueError,
+        TypeError
+    ) as erro:
+
+        print(
+            "Erro ao interpretar os dados:",
+            erro,
+            flush=True
+        )
+
+        time.sleep(15)
+
+
+    # ======================================================
+    # QUALQUER OUTRO ERRO
+    # ======================================================
 
     except Exception as erro:
 
@@ -546,16 +626,22 @@ while True:
             "Erro inesperado no monitor:",
             type(erro).__name__,
             "-",
-            erro
-    )
+            erro,
+            flush=True
+        )
 
         time.sleep(15)
 
 
+    # ======================================================
+    # CTRL + C
+    # ======================================================
+
     except KeyboardInterrupt:
 
         print(
-            "\nMonitoramento encerrado."
+            "\nMonitoramento encerrado.",
+            flush=True
         )
 
         break

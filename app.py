@@ -2,34 +2,71 @@ from flask import Flask
 import subprocess
 import sys
 import os
-import requests
-import urllib3
+from datetime import datetime, timezone
+
 
 app = Flask(__name__)
 
+
+# ==========================================================
+# CAMINHOS
+# ==========================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+
+MONITOR_PATH = os.path.join(
+    BASE_DIR,
+    "monitor.py"
+)
+
+
 ARQUIVO_STATUS = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    BASE_DIR,
     "monitor_status.txt"
 )
 
-inicio_monitor = None
 
-monitor = subprocess.Popen([
-    sys.executable,
-    "monitor.py"
-])
+# ==========================================================
+# INÍCIO DO MONITOR
+# ==========================================================
 
+inicio_monitor = datetime.now(timezone.utc)
+
+
+monitor = subprocess.Popen(
+    [
+        sys.executable,
+        "-u",
+        MONITOR_PATH
+    ],
+    cwd=BASE_DIR
+)
+
+
+# ==========================================================
+# ROTA PRINCIPAL
+# ==========================================================
 
 @app.route("/")
 def inicio():
+
     return "Monitor EMTU funcionando!"
 
+
+# ==========================================================
+# ROTA DE STATUS
+# ==========================================================
 
 @app.route("/status")
 def status():
 
+    # Verifica se o processo ainda está vivo
     if monitor.poll() is None:
 
+        # Verifica se já houve uma consulta válida
         if os.path.exists(ARQUIVO_STATUS):
 
             try:
@@ -40,13 +77,30 @@ def status():
                     encoding="utf-8"
                 ) as arquivo:
 
-                    ultima_consulta = arquivo.read().strip()
+                    ultima_consulta = datetime.fromisoformat(
+                        arquivo.read().strip()
+                    )
+
+
+                agora = datetime.now(timezone.utc)
+
+
+                tempo_desde_consulta = (
+                    agora - ultima_consulta
+                )
+
 
                 return (
                     "Monitor EMTU está rodando!<br>"
                     f"PID: {monitor.pid}<br>"
-                    f"Última consulta à EMTU: {ultima_consulta}"
+                    f"Iniciado em: "
+                    f"{inicio_monitor.strftime('%d/%m/%Y %H:%M:%S')} UTC<br>"
+                    f"Última consulta à EMTU: "
+                    f"{ultima_consulta.strftime('%d/%m/%Y %H:%M:%S')} UTC<br>"
+                    f"Tempo desde a última consulta: "
+                    f"{tempo_desde_consulta}"
                 )
+
 
             except Exception as erro:
 
@@ -56,11 +110,13 @@ def status():
                     f"Erro ao ler status: {erro}"
                 )
 
+
         return (
             "Monitor EMTU está rodando!<br>"
             f"PID: {monitor.pid}<br>"
             "Ainda não foi registrada uma consulta à EMTU."
         )
+
 
     return (
         "Monitor EMTU parou.<br>"
@@ -68,44 +124,16 @@ def status():
     )
 
 
-@app.route("/emtu-test")
-def emtu_test():
-
-    urllib3.disable_warnings(
-        urllib3.exceptions.InsecureRequestWarning
-    )
-
-    try:
-
-        resposta = requests.get(
-            "https://rest-emtu.noxxonsat.com.br/rest/lineDetails",
-            params={
-                "linha": "047"
-            },
-            verify=False,
-            timeout=15
-        )
-
-        return (
-            f"Conexão com EMTU funcionando!<br>"
-            f"Status HTTP: {resposta.status_code}<br>"
-            f"Tamanho da resposta: {len(resposta.content)} bytes"
-        )
-
-    except Exception as erro:
-
-        return (
-            "ERRO AO ACESSAR A API DA EMTU!<br>"
-            f"Tipo: {type(erro).__name__}<br>"
-            f"Erro: {erro}"
-        )
-
+# ==========================================================
+# INICIAR FLASK
+# ==========================================================
 
 if __name__ == "__main__":
 
     porta = int(
         os.environ.get("PORT", 3000)
     )
+
 
     app.run(
         host="0.0.0.0",
