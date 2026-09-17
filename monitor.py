@@ -3,6 +3,8 @@ import time
 import requests
 import urllib3
 from geopy.distance import geodesic
+from datetime import datetime, timezone
+import math
 
 
 # ==========================================================
@@ -25,6 +27,9 @@ TOPICO = "gui-emtu-047-9x82k"
 
 # API da EMTU
 URL_API = "https://rest-emtu.noxxonsat.com.br/rest/lineDetails"
+
+# Arquivo usado para informar quando foi feita a última consulta
+ARQUIVO_STATUS = "monitor_status.txt"
 
 # Remove aviso do certificado expirado
 urllib3.disable_warnings(
@@ -156,8 +161,8 @@ def calcular_posicao_relativa(latitude, longitude):
 
     fator_longitude = (
         111320
-        * __import__("math").cos(
-            __import__("math").radians(latitude_alerta)
+        * math.cos(
+            math.radians(latitude_alerta)
         )
     )
 
@@ -254,12 +259,26 @@ while True:
 
         dados_api = resposta.json()
 
+        # Registra que uma consulta válida à EMTU foi realizada
+        with open(
+            ARQUIVO_STATUS,
+            "w",
+            encoding="utf-8"
+        ) as arquivo_status:
+
+            arquivo_status.write(
+                datetime.now(timezone.utc).isoformat()
+            )
+
         linha = dados_api["linhas"][0]
 
         veiculos = linha["veiculos"]
 
 
-        # Limpa tela
+        # ==================================================
+        # LIMPAR TELA
+        # ==================================================
+
         print("\033[2J\033[H", end="")
 
 

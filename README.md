@@ -31,7 +31,7 @@ enviada para o iPhone através do ntfy.
 - `stop.txt` — dados das paradas
 - `requirements.txt` — dependências do projeto
 
-##  Objetivo
+##   Objetivo
 
 Automatizar o acompanhamento do ônibus e avisar o usuário no momento
 certo para sair da estação e caminhar até o ponto de embarque.
